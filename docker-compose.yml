@@ -13,9 +13,10 @@ services:
       context: .
       dockerfile: Dockerfile-generateconfig-anyconf
     profiles: [setup]
+    restart: on-failure
     volumes:
       - ./:/code
-      - "${STORAGE_DIR}:/code/storage"
+      - "./storage/code/storage"
 
   # processing any-sync-* configs
   generateconfig-processing:
@@ -28,7 +29,7 @@ services:
     profiles: [setup]
     volumes:
       - ./:/code
-      - "${STORAGE_DIR}:/code/storage"
+      - "./storage/code/storage"
 
   mongo-1:
     depends_on:
@@ -39,7 +40,7 @@ services:
     command: ["--replSet", "${MONGO_REPLICA_SET}", "--port", "${MONGO_1_PORT}"]
     profiles: [setup]
     volumes:
-      - "${STORAGE_DIR}/mongo-1/:/data/db"
+      - "./storage/mongo-1/:/data/db"
     healthcheck:
       test: test $$(mongosh --port ${MONGO_1_PORT} --quiet --eval "try {rs.initiate({_id:'${MONGO_REPLICA_SET}',members:[{_id:0,host:\"mongo-1:${MONGO_1_PORT}\"}]})} catch(e) {rs.status().ok}") -eq 1
       interval: 10s
@@ -54,7 +55,7 @@ services:
     command: ["redis-server", "--port", "${REDIS_PORT}", "--dir", "/data/", "--appendonly", "yes", "--maxmemory", "${REDIS_MAXMEMORY}", "--maxmemory-policy", "noeviction", "--protected-mode", "no", "--loadmodule", "/opt/redis-stack/lib/redisbloom.so"]
     profiles: [setup]
     volumes:
-      - "${STORAGE_DIR}/redis/:/data/"
+      - "./storage/redis/:/data/"
     healthcheck:
       test: [ "CMD", "redis-cli", "--raw", "-p", "${REDIS_PORT}", "incr", "ping" ]
       interval: 10s
@@ -70,7 +71,7 @@ services:
       MINIO_ROOT_PASSWORD: "${AWS_SECRET_ACCESS_KEY}"
     profiles: [setup]
     volumes:
-      - "${STORAGE_DIR}/minio:/data"
+      - "./storage/minio:/data"
     healthcheck:
       test: bash -c ':> /dev/tcp/127.0.0.1/${MINIO_PORT}' || exit 1
       interval: 5s
@@ -88,7 +89,7 @@ services:
     profiles: [intialsetup]
     entrypoint: >
       /bin/sh -c "
-      until (/usr/bin/mc alias set minio http://minio:${MINIO_PORT} '${AWS_ACCESS_KEY_ID}' '${AWS_SECRET_ACCESS_KEY}') do echo '...waiting...' && sleep 1; done;
+      until (/usr/bin/mc alias set minio http:/minio:${MINIO_PORT} '${AWS_ACCESS_KEY_ID}' '${AWS_SECRET_ACCESS_KEY}') do echo '...waiting...' && sleep 1; done;
       /usr/bin/mc mb minio/${MINIO_BUCKET};
       exit 0;
       "
@@ -113,7 +114,7 @@ services:
       - 8005:8000
     volumes:
       - ./etc/any-sync-coordinator/:/etc/any-sync-coordinator/
-      - "${STORAGE_DIR}/networkStore/any-sync-coordinator/:/networkStore/"
+      - "./storage/networkStore/any-sync-coordinator/:/networkStore/"
     deploy:
       resources:
         limits:
@@ -133,7 +134,7 @@ services:
     volumes:
       - ./etc/any-sync-filenode/:/etc/any-sync-filenode/
       - ./etc/.aws:/root/.aws:ro
-      - "${STORAGE_DIR}/networkStore/any-sync-filenode/:/networkStore/"
+      - "./storage/networkStore/any-sync-filenode/:/networkStore/"
     deploy:
       resources:
         limits:
@@ -153,8 +154,8 @@ services:
       - 8001:8000
     volumes:
       - ./etc/any-sync-node-1/:/etc/any-sync-node/
-      - "${STORAGE_DIR}/any-sync-node-1/:/storage/"
-      - "${STORAGE_DIR}/networkStore/any-sync-node-1/:/networkStore/"
+      - "./storage/any-sync-node-1/:/storage/"
+      - "./storage/networkStore/any-sync-node-1/:/networkStore/"
     deploy:
       resources:
         limits:
@@ -174,8 +175,8 @@ services:
       - 8002:8000
     volumes:
       - ./etc/any-sync-node-2/:/etc/any-sync-node/
-      - "${STORAGE_DIR}/any-sync-node-2/:/storage/"
-      - "${STORAGE_DIR}/networkStore/any-sync-node-2/:/networkStore/"
+      - "./storage/any-sync-node-2/:/storage/"
+      - "./storage/networkStore/any-sync-node-2/:/networkStore/"
     deploy:
       resources:
         limits:
@@ -195,8 +196,8 @@ services:
       - 8003:8000
     volumes:
       - ./etc/any-sync-node-3/:/etc/any-sync-node/
-      - "${STORAGE_DIR}/any-sync-node-3/:/storage/"
-      - "${STORAGE_DIR}/networkStore/any-sync-node-3/:/networkStore/"
+      - "./storage/any-sync-node-3/:/storage/"
+      - "./storage/networkStore/any-sync-node-3/:/networkStore/"
     deploy:
       resources:
         limits:
@@ -215,7 +216,7 @@ services:
       - 8006:8000
     volumes:
       - ./etc/any-sync-consensusnode/:/etc/any-sync-consensusnode/
-      - "${STORAGE_DIR}/networkStore/any-sync-consensusnode/:/networkStore/"
+      - "./storage/networkStore/any-sync-consensusnode/:/networkStore/"
     deploy:
       resources:
         limits:
@@ -236,7 +237,7 @@ services:
       - any-sync-node-3
     volumes:
       - ./:/code
-      - "${STORAGE_DIR}:/code/storage"
+      - "./storage/code/storage"
     command: ["tail", "-f", "/dev/null"]
     stop_signal: SIGKILL
     tty: true

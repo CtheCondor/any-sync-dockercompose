@@ -30,6 +30,7 @@ services:
       context: .
       dockerfile: Dockerfile-generateconfig-processing
     profiles: [setup]
+    restart: on-failure
     env_file:
       - path: .env
         required: true

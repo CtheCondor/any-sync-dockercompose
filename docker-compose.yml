@@ -103,9 +103,8 @@ services:
 
   create-bucket:
     image: minio/mc:latest
-    depends_on:
-      - minio
-    profiles: [intialsetup]
+    profiles: [initialsetup]
+    restart: "no"
     env_file:
       - path: .env
         required: true

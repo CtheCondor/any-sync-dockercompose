@@ -1,9 +1,18 @@
 services:
   # generate configs using the anyconf utility
+  generateconfig-env:
+    profiles: [env]
+    build:
+      context: .
+      dockerfile: Dockerfile-generateconfig-env
+    volumes:
+      - ./:/code
+
   generateconfig-anyconf:
     build:
       context: .
       dockerfile: Dockerfile-generateconfig-anyconf
+    profiles: [setup]
     volumes:
       - ./:/code
       - "${STORAGE_DIR}:/code/storage"
@@ -16,6 +25,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile-generateconfig-processing
+    profiles: [setup]
     volumes:
       - ./:/code
       - "${STORAGE_DIR}:/code/storage"
@@ -27,6 +37,7 @@ services:
     image: "mongo:${MONGO_VERSION}"
     restart: unless-stopped
     command: ["--replSet", "${MONGO_REPLICA_SET}", "--port", "${MONGO_1_PORT}"]
+    profiles: [setup]
     volumes:
       - "${STORAGE_DIR}/mongo-1/:/data/db"
     healthcheck:
@@ -41,6 +52,7 @@ services:
     image: "redis/redis-stack-server:${REDIS_VERSION}"
     restart: unless-stopped
     command: ["redis-server", "--port", "${REDIS_PORT}", "--dir", "/data/", "--appendonly", "yes", "--maxmemory", "${REDIS_MAXMEMORY}", "--maxmemory-policy", "noeviction", "--protected-mode", "no", "--loadmodule", "/opt/redis-stack/lib/redisbloom.so"]
+    profiles: [setup]
     volumes:
       - "${STORAGE_DIR}/redis/:/data/"
     healthcheck:
@@ -56,6 +68,7 @@ services:
     environment:
       MINIO_ROOT_USER: "${AWS_ACCESS_KEY_ID}"
       MINIO_ROOT_PASSWORD: "${AWS_SECRET_ACCESS_KEY}"
+    profiles: [setup]
     volumes:
       - "${STORAGE_DIR}/minio:/data"
     healthcheck:
@@ -72,6 +85,7 @@ services:
     image: minio/mc:latest
     depends_on:
       - minio
+    profiles: [intialsetup]
     entrypoint: >
       /bin/sh -c "
       until (/usr/bin/mc alias set minio http://minio:${MINIO_PORT} '${AWS_ACCESS_KEY_ID}' '${AWS_SECRET_ACCESS_KEY}') do echo '...waiting...' && sleep 1; done;
@@ -81,11 +95,7 @@ services:
 
   any-sync-coordinator_bootstrap:
     image: "ghcr.io/anyproto/any-sync-coordinator:${ANY_SYNC_COORDINATOR_VERSION}"
-    depends_on:
-      generateconfig-processing:
-        condition: service_completed_successfully
-      mongo-1:
-        condition: service_healthy
+    profiles: [main]
     volumes:
       - ./etc/any-sync-coordinator/:/etc/any-sync-coordinator/
     restart: "no"
@@ -93,11 +103,8 @@ services:
 
   any-sync-coordinator:
     image: "ghcr.io/anyproto/any-sync-coordinator:${ANY_SYNC_COORDINATOR_VERSION}"
+    profiles: [main]
     depends_on:
-      generateconfig-processing:
-        condition: service_completed_successfully
-      mongo-1:
-        condition: service_healthy
       any-sync-coordinator_bootstrap:
         condition: service_completed_successfully
     ports:
@@ -115,11 +122,8 @@ services:
 
   any-sync-filenode:
     image: "ghcr.io/anyproto/any-sync-filenode:${ANY_SYNC_FILENODE_VERSION}"
+    profiles: [main]
     depends_on:
-      redis:
-        condition: service_healthy
-      minio:
-        condition: service_healthy
       any-sync-coordinator:
         condition: service_started
     ports:
@@ -138,6 +142,7 @@ services:
 
   any-sync-node-1:
     image: "ghcr.io/anyproto/any-sync-node:${ANY_SYNC_NODE_VERSION}"
+    profiles: [main]
     depends_on:
       any-sync-coordinator:
         condition: service_started
@@ -158,6 +163,7 @@ services:
 
   any-sync-node-2:
     image: "ghcr.io/anyproto/any-sync-node:${ANY_SYNC_NODE_VERSION}"
+    profiles: [main]
     depends_on:
       any-sync-coordinator:
         condition: service_started
@@ -178,6 +184,7 @@ services:
 
   any-sync-node-3:
     image: "ghcr.io/anyproto/any-sync-node:${ANY_SYNC_NODE_VERSION}"
+    profiles: [main]
     depends_on:
       any-sync-coordinator:
         condition: service_started
@@ -198,6 +205,7 @@ services:
 
   any-sync-consensusnode:
     image: "ghcr.io/anyproto/any-sync-consensusnode:${ANY_SYNC_CONSENSUSNODE_VERSION}"
+    profiles: [main]
     depends_on:
       any-sync-coordinator:
         condition: service_started
@@ -217,6 +225,7 @@ services:
   # any-sync-netcheck
   netcheck:
     image: "ghcr.io/anyproto/any-sync-tools:${ANY_SYNC_TOOLS_VERSION}"
+    profiles: [main]
     restart: unless-stopped
     depends_on:
       - any-sync-consensusnode

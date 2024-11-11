@@ -19,7 +19,7 @@ services:
         required: true
     volumes:
       - ./:/code
-      - "./storage/code/storage"
+      - "./storage/:code/storage"
 
   # processing any-sync-* configs
   generateconfig-processing:
@@ -35,7 +35,7 @@ services:
         required: true
     volumes:
       - ./:/code
-      - "./storage/code/storage"
+      - "./storage/:code/storage"
 
   mongo-1:
     depends_on:
@@ -279,7 +279,7 @@ services:
       - any-sync-node-3
     volumes:
       - ./:/code
-      - "./storage/code/storage"
+      - "./storage/:code/storage"
     command: ["tail", "-f", "/dev/null"]
     stop_signal: SIGKILL
     tty: true

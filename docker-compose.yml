@@ -88,9 +88,6 @@ services:
         required: true
     volumes:
       - "./storage/minio:/data"
-    ports:
-      - 9001:9000
-      - 9002:9001
     healthcheck:
       test: bash -c ':> /dev/tcp/127.0.0.1/${MINIO_PORT}' || exit 1
       interval: 5s
